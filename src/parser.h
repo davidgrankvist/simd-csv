@@ -1,6 +1,8 @@
 #ifndef parser_h
 #define parser_h
 
-int ParseCsvRowInt(char* data, char delimiter, int* output, int* outputCount);
+#define CHUNK_SIZE 32
+
+void ParseCsv(char* data, char delimiter);
 
 #endif
