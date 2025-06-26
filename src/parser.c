@@ -4,8 +4,20 @@
 #include <stdbool.h>
 #include "parser.h"
 
-#define FIRST_SET_BIT(n) __builtin_ctz(n)
-#define CONSUME_BIT(n) n &= n - 1
+/*
+ * __builtin_ctz is a GCC builtin to count the trailing zeros.
+ * That's the same as the index of the lowest set bit.
+ */
+#define LOWEST_SET_BIT(n) __builtin_ctz(n)
+
+/*
+ * Unset the lowest set bit.
+ *
+ * Example:
+ * 1110 - 0001 = 1101
+ * 1110 & 1101 = 1100
+ */
+#define CONSUME_LOWEST_BIT(n) n &= n - 1
 
 /*
  * Searches for occurrences of a target character
@@ -13,9 +25,11 @@
  * where the nth bit is set if the nth byte was a match.
  */
 static inline int GetMask32(char* data, char target) {
+    // load 32 bytes of data and 32 bytes of repeated target characters
     __m256i chunk = _mm256_loadu_si256((__m256i*)data);
     __m256i targetChunk = _mm256_set1_epi8(target);
 
+    // compare the 32 bytes and pack the 0/1 results into 32 bits
     __m256i byteComparison = _mm256_cmpeq_epi8(chunk, targetChunk);
     int packedByteComparison = _mm256_movemask_epi8(byteComparison);
 
@@ -59,7 +73,7 @@ static int ParseCsvChunkInt(char* data, char delimiter, int* output, int* output
     int valueStart = 0;
     int outputIndex = 0;
     while (mask) {
-        int nonValueIndex = FIRST_SET_BIT(mask);
+        int nonValueIndex = LOWEST_SET_BIT(mask);
         int valueLength = nonValueIndex - valueStart;
 
         if (valueLength == 0) {
@@ -70,7 +84,7 @@ static int ParseCsvChunkInt(char* data, char delimiter, int* output, int* output
                 assert(false && "Invalid CSV. Encountered consecutive delimiters.");
             } else {
                 // fast forward if there are repeated newlines
-                CONSUME_BIT(mask);
+                CONSUME_LOWEST_BIT(mask);
                 valueStart++;
                 continue;
             }
@@ -79,7 +93,7 @@ static int ParseCsvChunkInt(char* data, char delimiter, int* output, int* output
         int value = ParseInt(&data[valueStart], valueLength);
         output[outputIndex++] = value;
 
-        CONSUME_BIT(mask);
+        CONSUME_LOWEST_BIT(mask);
         valueStart += valueLength + 1;
     }
 
