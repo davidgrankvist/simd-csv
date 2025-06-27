@@ -74,6 +74,11 @@ static int ParseCsvChunkInt(char* data, char delimiter, int* output, int* output
     int outputIndex = 0;
     while (mask) {
         int nonValueIndex = LOWEST_SET_BIT(mask);
+        /*
+         * TODO: This works for the test data, but not the general case.
+         * The same multiple-digit number may be partially read in
+         * separate chunks.
+         */
         int valueLength = nonValueIndex - valueStart;
 
         if (valueLength == 0) {
@@ -103,7 +108,7 @@ static int ParseCsvChunkInt(char* data, char delimiter, int* output, int* output
 
 // just print the parsed data for now
 void ParseCsv(char* data, char delimiter) {
-    int outputBuffer[32];
+    int outputBuffer[CHUNK_SIZE];
     int numWritten = 0;
     int numRead = 0;
     int offset = 0;
